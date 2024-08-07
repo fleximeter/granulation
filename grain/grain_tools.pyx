@@ -5,11 +5,10 @@ This file is for granulation tools. You need to build it before using it:
 `python setup.py build_ext --inplace
 """
 
-import cython
 import numpy as np
 
 
-def crossfade(audio1: np.ndarray, audio2: np.ndarray, merge_fraction: float):
+def crossfade(audio1: np.ndarray, audio2: np.ndarray, double merge_fraction):
     """
     Crossfades two audio arrays
     :param audio1: An audio array
@@ -42,7 +41,7 @@ def crossfade(audio1: np.ndarray, audio2: np.ndarray, merge_fraction: float):
     return new_audio
    
 
-def merge_grain(audio: np.ndarray, grain: np.ndarray, start_idx: cython.int, end_idx: cython.int, channel: cython.int):
+def merge_grain(audio: np.ndarray, grain: np.ndarray, int start_idx, int end_idx, int channel):
     """
     Merges a grain array into an audio array
     :param audio: The audio array

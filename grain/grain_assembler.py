@@ -12,7 +12,7 @@ Description: Contains grain assembler tools. Workflow consists of
 import aus.operations as operations
 import numpy as np
 import random
-import grain_tools
+from . import grain_tools
 
 
 def assemble_repeat(grain, n: int, distance_between_grains: int) -> list:
