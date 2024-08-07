@@ -1,5 +1,5 @@
 """
-File: grain_tools.py
+File: grain_tools.pyx
 
 This file is for granulation tools. You need to build it before using it:
 `python setup.py build_ext --inplace
@@ -9,7 +9,7 @@ import cython
 import numpy as np
 
 
-def crossfade(audio1: np.ndarray, audio2: np.ndarray, merge_fraction: cython.double):
+def crossfade(audio1: np.ndarray, audio2: np.ndarray, merge_fraction: float):
     """
     Crossfades two audio arrays
     :param audio1: An audio array
@@ -17,9 +17,9 @@ def crossfade(audio1: np.ndarray, audio2: np.ndarray, merge_fraction: cython.dou
     :param merge_fraction: The percentage of overlap for merging. The smallest audio array will be chosen for calculating this percentage.
     :return: The merged audio
     """
-    i: cython.int
-    j: cython.int
-    start_idx: cython.int
+    cdef int i
+    cdef int j
+    cdef int start_idx
     overlap_len = int(min(audio1.shape[-1], audio2.shape[-1]) * merge_fraction)
     x = np.linspace(0, np.pi / 2, overlap_len, False)
     sin_arr = np.sin(x)
@@ -51,8 +51,8 @@ def merge_grain(audio: np.ndarray, grain: np.ndarray, start_idx: cython.int, end
     :param end_idx: The end index for merging
     :param channel: The channel in which to merge
     """
-    i: cython.int
-    j: cython.int
+    cdef int i
+    cdef int j
     i = 0
     j = 0
     if channel == 0 and audio.ndim == 1:
