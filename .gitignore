@@ -1,3 +1,14 @@
+# Other
+*.c
+*.wav
+*.aif
+*.aiff
+*.mp3
+*.ogg
+*.flac
+*.wma
+*.aac
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
