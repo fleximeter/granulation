@@ -1,7 +1,7 @@
 """
-File: tag.py
+File: tag_cleanup.py
 
-This is a grain tagger.
+This script cleans up duplicate grain tags.
 """
 
 import os
@@ -23,15 +23,7 @@ else:
 db = sqlite3.connect(DB)
 cursor = db.cursor()
 
-cursor.execute("""
-               SELECT id FROM grains WHERE
-               (file LIKE '%geese%')
-               """)
-items = cursor.fetchall()
-cursor.executemany("""
-                   INSERT INTO tags (grain_id, tag)
-                   VALUES (?, 'bird');
-                   """, items)
+cursor.execute("DELETE FROM tags WHERE rowid NOT IN (SELECT MIN(rowid) FROM tags GROUP BY grain_id, tag);")
 
 db.commit()
 db.close()
