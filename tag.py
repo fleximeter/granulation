@@ -14,7 +14,7 @@ PC = "D:\\recording"
 SYSTEM = platform.system()
 
 if SYSTEM == "Darwin":
-    DB = os.path.join(MAC, "data/grains.sqlite3")    
+    DB = os.path.join(MAC, "data/grains.sqlite3")
 elif SYSTEM == "Linux":
     DB = os.path.join(ARGON, "data/grains.sqlite3")
 else:

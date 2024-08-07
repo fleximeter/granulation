@@ -113,91 +113,46 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
 if __name__ == "__main__":
     LENGTH = 4096
     SELECT = [
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.00 AND 0.05) 
-            AND (spectral_roll_off_75 BETWEEN 100 AND 200)
-            AND (energy > 0.05)
-            AND (frequency IS NULL);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.1 AND 0.3) 
-            AND (spectral_roll_off_75 BETWEEN 100 AND 300)
-            AND (energy > 0.05);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.00 AND 0.05) 
-            AND (spectral_roll_off_75 BETWEEN 100 AND 200)
-            AND (energy > 0.05)
-            AND (frequency IS NULL);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.1 AND 0.5) 
-            AND (spectral_roll_off_75 BETWEEN 100 AND 400)
-            AND (energy > 0.05);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.00 AND 0.05) 
-            AND (spectral_roll_off_75 BETWEEN 75 AND 500)
-            AND (energy > 0.05)
-            AND (frequency IS NULL);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.1 AND 0.2) 
-            AND (spectral_roll_off_75 BETWEEN 100 AND 200)
-            AND (energy > 0.05);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.00 AND 0.05) 
-            AND (spectral_roll_off_75 BETWEEN 75 AND 600)
-            AND (energy > 0.05)
-            AND (frequency IS NULL);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.2 AND 0.8) 
-            AND (spectral_roll_off_75 BETWEEN 100 AND 500)
-            AND (energy > 0.05);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.00 AND 0.05) 
-            AND (spectral_roll_off_75 BETWEEN 50 AND 800)
-            AND (energy > 0.05)
-            AND (frequency IS NULL);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.5 AND 1.0) 
-            AND (spectral_roll_off_75 BETWEEN 100 AND 200)
-            AND (energy > 0.05);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.00 AND 0.05) 
-            AND (spectral_roll_off_75 BETWEEN 50 AND 900)
-            AND (energy > 0.05)
-            AND (frequency IS NULL);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.3 AND 0.7) 
-            AND (spectral_roll_off_75 BETWEEN 50 AND 1000)
-            AND (energy > 0.05);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.00 AND 0.05) 
-            AND (spectral_roll_off_75 BETWEEN 50 AND 1100)
-            AND (energy > 0.05)
-            AND (frequency IS NULL);""",
-        f"""SELECT * FROM grains 
-        WHERE (length = {LENGTH})
-            AND (spectral_flatness BETWEEN 0.1 AND 0.4) 
-            AND (spectral_roll_off_75 BETWEEN 20 AND 1400)
-            AND (energy > 0.05);""",
+        # not specifying frequency
+        """SELECT grains.* FROM grains
+        INNER JOIN tags ON grains.id = tags.grain_id
+        WHERE (grains.length = ?) AND (grains.spectral_flatness BETWEEN ? AND ?) AND (grains.spectral_roll_off_75 BETWEEN ? AND ?) 
+            AND (grains.energy > ?) AND (grains.frequency IS NULL) AND (tags.tag = ?)
+        GROUP BY grains.id;""",
+
+        # specifying frequency
+        """SELECT grains.* FROM grains
+        INNER JOIN tags ON grains.id = tags.grain_id
+        WHERE (grains.length = ?) AND (grains.spectral_flatness BETWEEN ? AND ?) AND (grains.spectral_roll_off_75 BETWEEN ? AND ?) 
+            AND (grains.energy > ?) AND (grains.frequency BETWEEN ? AND ?) AND (tags.tag = ?)
+        GROUP BY grains.id;""",
+    ]
+
+    PARAMS = [
+        (0, (LENGTH, 0.4, 1.0, 200.0, 400.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.3, 0.6, 250.0, 450.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.3, 0.6, 300.0, 500.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.2, 0.5, 350.0, 550.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.2, 0.3, 400.0, 600.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.1, 0.3, 450.0, 650.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.1, 0.2, 500.0, 700.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.0, 0.2, 550.0, 750.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.0, 0.2, 600.0, 750.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.1, 0.3, 650.0, 800.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.1, 0.3, 700.0, 850.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.2, 0.4, 650.0, 800.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.2, 0.4, 600.0, 750.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.0, 0.2, 550.0, 700.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.0, 0.2, 500.0, 650.0, 0.05, 'animal')),
+        (0, (LENGTH, 0.0, 0.2, 500.0, 600.0, 0.05, 'animal')),
     ]
 
     print("Retrieving grains...")
     # Retrieve grain metadata and grains
     db, cursor = grain_sql.connect_to_db(DB)
     grain_entry_categories = []
-    for i, select in enumerate(SELECT):
-        cursor.execute(select)
+    for i, param in enumerate(PARAMS):
+        cursor.execute(SELECT[param[0]], param[1])
         records = cursor.fetchall()
         if len(records) == 0:
             raise Exception(f"No grains found for index {i}.")
