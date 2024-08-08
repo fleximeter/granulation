@@ -15,6 +15,48 @@ import random
 from . import grain_tools
 
 
+class LinearEnvelope:
+    """
+    Defines a linear envelope, with y points and x points.
+    """
+    def __init__(self, y_points: list, x_points: list):
+        """
+        Initializes the linear envelope
+        :param points: A list of Y points
+        :param x_pos: A list of X points
+        """
+        self.y_points = y_points
+        self.x_points = x_points
+        self.slopes = []
+        for i in range(len(y_points) - 1):
+            self.slopes.append((y_points[i+1] - y_points[i]) / (x_points[i+1] - x_points[i]))
+
+
+    def __call__(self, x):
+        """
+        Returns the linearly interpolated output value for a given x input
+        :param x: The x value
+        :return: The y value
+        """
+        if x <= self.x_points[0]:
+            return self.y_points[0]
+        elif x >= self.x_points[-1]:
+            return self.y_points[-1]
+        else:
+            idx = -1
+            low = 0
+            high = len(self.x_points)
+            while low <= high and idx == -1:
+                mid = low + (high - low) // 2
+                if self.x_points[mid] <= x <= self.x_points[mid+1]:
+                    idx = mid
+                elif self.x_points[mid] < x:
+                    low = mid + 1
+                else:
+                    high = mid - 1
+            return round(self.slopes[idx] * (x - self.x_points[idx]) + self.y_points[idx])
+
+
 def assemble_repeat(grain, n: int, distance_between_grains: int) -> list:
     """
     Repeats a grain or list of grains for n times.

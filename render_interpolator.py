@@ -39,7 +39,7 @@ else:
     DB = os.path.join(PC, "data/grains.sqlite3")
 
 
-def render(grain_entry_categories, num_unique_grains_per_section, num_repetitions, overlap_num, num_channels, source_dirs, out_dir, name):
+def render(grain_entry_categories, num_unique_grains_per_section, num_repetitions, grain_overlap_num, num_channels, source_dirs, out_dir, name):
     """
     Renders an audio file
     :param grain_entry_categories: A list of grain record lists
@@ -62,7 +62,7 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
             idx = rng.randrange(0, len(entry_category))
             if "church-bell" not in entry_category[idx]["file"]:
                 grain = entry_category[idx]
-                grain["distance_between_grains"] = overlap_num
+                grain["distance_between_grains"] = grain_overlap_num
                 grain["channel"] = 0
                 grain_list.append(grain)
         # print(f"{len(grain_list)} grains added to the list")
@@ -71,7 +71,7 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
     assembled_grains_lists = []
     num = 0
     for l in grain_source_lists:
-        assembled_grains_lists.append(grain_assembler.assemble_repeat(l, num_repetitions, overlap_num))
+        assembled_grains_lists.append(grain_assembler.assemble_repeat(l, num_repetitions, grain_overlap_num))
         num += len(assembled_grains_lists[-1])
 
     # Repeat the chunks to make longer audio
@@ -80,10 +80,22 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
         overlap_num = int(min(len(grains), len(assembled_grains_lists[i])) * 0.95)
         grains = grains[:-overlap_num] + grain_assembler.interpolate(grains[-overlap_num:],
                                               assembled_grains_lists[i][:overlap_num]) + assembled_grains_lists[i][overlap_num:]
-        
+    grain_distances = grain_assembler.LinearEnvelope([grain_overlap_num, grain_overlap_num, 
+                                                      int(grain_overlap_num * 0.85), 100, int(grain_overlap_num * 0.85), 
+                                                      grain_overlap_num, grain_overlap_num, 
+                                                      int(grain_overlap_num * 0.85), 100, int(grain_overlap_num * 0.85), 
+                                                      grain_overlap_num], 
+                                                     [0, 5000, 
+                                                      5100, 5140, 5160,
+                                                      5260, 16000, 
+                                                      16100, 16140, 16160,
+                                                      16260 ])
+
     grain_assembler.swap_random_pair(grains, 0.2, rng)
-    grain_assembler.randomize_param(grains, "distance_between_grains", rng, 50)
     grain_assembler.spread_across_channels(grains, num_channels)
+    for i in range(len(grains)):
+        grains[i]["distance_between_grains"] = grain_distances(i)
+    grain_assembler.randomize_param(grains, "distance_between_grains", rng, 50)
     grain_assembler.calculate_grain_positions(grains)
     grain_sql.read_grains_from_file(grains, source_dirs)
     for i in range(len(grains)):
