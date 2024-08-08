@@ -57,6 +57,66 @@ class LinearEnvelope:
             return round(self.slopes[idx] * (x - self.x_points[idx]) + self.y_points[idx])
 
 
+class NthPowerEnvelope:
+    """
+    Defines a generalized n-th-power envelope, with y points and x points. If n=1, the envelope is linear.
+    """
+    def __init__(self, y_points: list, x_points: list, powers: list, shapes: list):
+        """
+        Initializes the envelope
+        :param y_points: A list of Y points
+        :param x_points: A list of X points
+        :param powers: A list of powers for the envelope segments. Powers must be >= 1.
+        :param shapes: A list of shape names ("convex" and "concave").
+        In a convex curve, if you draw a straight line between y_0 and y_1, the line will lie above the curve.
+        In a concave curve, if you draw a straight line between y_0 and y_1, the line will lie below the curve.
+        """
+        self.y_points = y_points
+        self.x_points = x_points
+        self.powers = powers
+        self.shapes = shapes
+
+        # if there is no change from y-point to y-point, the gain coefficient is 0
+        self.gain = [0 for _ in range(len(shapes))]
+        self.a = [0 for _ in range(len(shapes))]
+
+        for i in range(len(y_points) - 1):
+            if shapes[i].lower() == "convex" and y_points[i+1] > y_points[i]:
+                self.gain[i] = (y_points[i+1]-y_points[i]) / (x_points[i+1] - x_points[i]) ** powers[i]
+            elif shapes[i].lower() == "convex" and y_points[i+1] < y_points[i]:
+                self.a[i] = x_points[i+1] - x_points[i]
+                self.gain[i] = (y_points[i]-y_points[i+1]) / (x_points[i] - x_points[i+1]) ** powers[i]
+            elif shapes[i].lower() == "concave" and y_points[i+1] > y_points[i]:
+                self.a[i] = x_points[i+1] - x_points[i]
+                self.gain[i] = (y_points[i]-y_points[i+1]) / (x_points[i] - x_points[i+1]) ** powers[i]
+            elif shapes[i].lower() == "concave" and y_points[i+1] < y_points[i]:
+                self.gain[i] = (y_points[i+1]-y_points[i]) / (x_points[i+1] - x_points[i]) ** powers[i]
+
+    def __call__(self, x):
+        """
+        Returns the interpolated output value for a given x input
+        :param x: The x value
+        :return: The y value
+        """
+        if x <= self.x_points[0]:
+            return self.y_points[0]
+        elif x >= self.x_points[-1]:
+            return self.y_points[-1]
+        else:
+            idx = -1
+            low = 0
+            high = len(self.x_points)
+            while low <= high and idx == -1:
+                mid = low + (high - low) // 2
+                if self.x_points[mid] <= x <= self.x_points[mid+1]:
+                    idx = mid
+                elif self.x_points[mid] < x:
+                    low = mid + 1
+                else:
+                    high = mid - 1
+            return round(self.gain[idx] * (x - self.x_points[idx] - self.a[idx]) ** self.powers[idx] + self.y_points[idx])
+
+
 def assemble_repeat(grain, n: int, distance_between_grains: int) -> list:
     """
     Repeats a grain or list of grains for n times.

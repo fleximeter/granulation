@@ -80,16 +80,11 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
         overlap_num = int(min(len(grains), len(assembled_grains_lists[i])) * 0.95)
         grains = grains[:-overlap_num] + grain_assembler.interpolate(grains[-overlap_num:],
                                               assembled_grains_lists[i][:overlap_num]) + assembled_grains_lists[i][overlap_num:]
-    grain_distances = grain_assembler.LinearEnvelope([grain_overlap_num, grain_overlap_num, 
-                                                      int(grain_overlap_num * 0.85), 100, int(grain_overlap_num * 0.85), 
-                                                      grain_overlap_num, grain_overlap_num, 
-                                                      int(grain_overlap_num * 0.85), 100, int(grain_overlap_num * 0.85), 
-                                                      grain_overlap_num], 
-                                                     [0, 5000, 
-                                                      5100, 5140, 5160,
-                                                      5260, 16000, 
-                                                      16100, 16140, 16160,
-                                                      16260 ])
+    grain_distances = grain_assembler.NthPowerEnvelope([grain_overlap_num, grain_overlap_num, int(grain_overlap_num * 0.35), 
+                                                      grain_overlap_num, grain_overlap_num, int(grain_overlap_num * 0.35), grain_overlap_num, grain_overlap_num], 
+                                                     [0, 5000, 5200, 5400, 
+                                                      16000, 16200, 16400, 18000 ],
+                                                      [2 for _ in range(11)], ["concave" for _ in range(11)])
 
     grain_assembler.swap_random_pair(grains, 0.2, rng)
     grain_assembler.spread_across_channels(grains, num_channels)
