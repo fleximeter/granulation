@@ -81,9 +81,11 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
     
     assembled_grains_lists = []
     num = 0
-    for l in grain_source_lists:
-        fudge_factor = rng.randrange(-num_repetitions // 2, num_repetitions // 2)
-        assembled_grains_lists.append(grain_assembler.assemble_repeat(l, num_repetitions + fudge_factor, grain_overlap_num))
+    for i, l in enumerate(grain_source_lists):
+        num_local_repetitions = num_repetitions[i]
+        # fudge the number of repetitions
+        num_local_repetitions += rng.randrange(-num_local_repetitions // 8, num_local_repetitions // 8)
+        assembled_grains_lists.append(grain_assembler.assemble_repeat(l, num_local_repetitions, grain_overlap_num))
         num += len(assembled_grains_lists[-1])
 
     # Repeat the chunks to make longer audio
@@ -106,7 +108,7 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
     grain_assembler.calculate_grain_positions(grains)
     grain_sql.read_grains_from_file(grains, source_dirs)
     for i in range(len(grains)):
-        print(f"Grain {i} length: {grains[i]['grain'].size}, source: {grains[i]['file']}, frames: {grains[i]['start_frame']}:{grains[i]['end_frame']}")
+        # print(f"Grain {i} length: {grains[i]['grain'].size}, source: {grains[i]['file']}, frames: {grains[i]['start_frame']}:{grains[i]['end_frame']}")
         grains[i]["grain"] = operations.adjust_level(grains[i]["grain"], DB)
         
     grain_audio = grain_assembler.merge(grains, num_channels, np.hanning)
@@ -136,23 +138,25 @@ if __name__ == "__main__":
     # Retrieve grain metadata and grains
     print("Retrieving grains...")
     db, cursor = grain_sql.connect_to_db(DB)
-    grain_entry_categories = query.query1(GRAIN_LENGTH, cursor)
+    grain_entry_categories = query.query2(GRAIN_LENGTH, cursor)
     db.close()
 
     # Generate candidate audio
     start = datetime.now()
     print("Rendering...")
-    NUM_AUDIO_CANDIDATES = 1
-    NUM_CHANNELS = 2
-    NUM_UNIQUE_GRAINS = 10
+    NUM_AUDIO_CANDIDATES = 5
+    NUM_CHANNELS = 8
+    NUM_UNIQUE_GRAINS = 20
     if NUM_AUDIO_CANDIDATES > 1:
-        processes = [mp.Process(target=render, args=(grain_entry_categories, NUM_UNIQUE_GRAINS, 150, -GRAIN_LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, f"out_{i+1}.wav")) for i in range(NUM_AUDIO_CANDIDATES)]
+        processes = [mp.Process(target=render, args=(grain_entry_categories, NUM_UNIQUE_GRAINS, 
+                                                     [200, 50, 100, 150, 200, 150, 150, 100, 50, 200, 150, 150, 150, 100, 150, 100, 75, 40, 30, 20, 20, 20, 20, 20, 200], 
+                                                     -GRAIN_LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, f"out_{i+1}.wav")) for i in range(NUM_AUDIO_CANDIDATES)]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
     else:
         render(grain_entry_categories, NUM_UNIQUE_GRAINS, 200, -GRAIN_LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, "out_1.wav")    
-    for p in processes:
-        p.start()
-    for p in processes:
-        p.join()
     duration = datetime.now() - start
     print("Elapsed time: {}:{:0>2}".format(duration.seconds // 60, duration.seconds % 60))
     
