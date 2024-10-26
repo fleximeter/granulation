@@ -8,6 +8,7 @@ import sqlite3
 import aus.audiofile as audiofile
 import numpy as np
 import os
+import pedalboard as pb
 
 
 FIELDS = [
@@ -89,10 +90,14 @@ def read_grains_from_file(grain_entries: list, source_dir):
             print(f"Could not find path {path} for file {grain['file']}")
             print(f"The source directory was {source_dir}")
         else:
-            audio = audiofile.read(path)
+            #audio = audiofile.read(path, 44100)
+            with pb.io.AudioFile(path).resampled_to(44100) as f:
+                audio = f.read(f.frames)
+                if audio.ndim == 1:
+                    audio = np.reshape(audio, (1, audio.shape[0]))
             for idx in grain_list:
-                grain_entries[idx]["grain"] = audio.samples[0][grain_entries[idx]["start_frame"]:grain_entries[idx]["end_frame"]]
-            del audio.samples
+                grain_entries[idx]["grain"] = audio[0, grain_entries[idx]["start_frame"]:grain_entries[idx]["end_frame"]]
+            # del audio.samples
             del audio
 
 

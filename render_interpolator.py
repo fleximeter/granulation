@@ -14,10 +14,13 @@ from grain.effects import *
 import grain.grain_assembler as grain_assembler
 import os
 import platform
+import query
 import multiprocessing as mp
 from datetime import datetime
 
 
+# Automatically detect the platform and corresponding directories
+# This would need to be manually edited for other environments
 MAC = "/Users/jmartin50/recording"
 ARGON = "/Users/jmartin50/recording"
 PC = "D:\\recording"
@@ -68,10 +71,19 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
         # print(f"{len(grain_list)} grains added to the list")
         grain_source_lists.append(grain_list)
     
+    # Duplicate some grains across boundaries
+    NUM = 3
+    SKIP = 3
+    for i in range(len(grain_source_lists)):
+        idxs = [rng.randrange(0, len(grain_source_lists[i])) for _ in range(NUM)]
+        for idx in idxs:
+            grain_source_lists[(i+SKIP) % len(grain_source_lists)].append(grain_source_lists[i][idx])
+    
     assembled_grains_lists = []
     num = 0
     for l in grain_source_lists:
-        assembled_grains_lists.append(grain_assembler.assemble_repeat(l, num_repetitions, grain_overlap_num))
+        fudge_factor = rng.randrange(-num_repetitions // 2, num_repetitions // 2)
+        assembled_grains_lists.append(grain_assembler.assemble_repeat(l, num_repetitions + fudge_factor, grain_overlap_num))
         num += len(assembled_grains_lists[-1])
 
     # Repeat the chunks to make longer audio
@@ -88,12 +100,13 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
 
     grain_assembler.swap_random_pair(grains, 0.2, rng)
     grain_assembler.spread_across_channels(grains, num_channels)
-    for i in range(len(grains)):
-        grains[i]["distance_between_grains"] = grain_distances(i)
+    # for i in range(len(grains)):
+    #     grains[i]["distance_between_grains"] = grain_distances(i)
     grain_assembler.randomize_param(grains, "distance_between_grains", rng, 50)
     grain_assembler.calculate_grain_positions(grains)
     grain_sql.read_grains_from_file(grains, source_dirs)
     for i in range(len(grains)):
+        print(f"Grain {i} length: {grains[i]['grain'].size}, source: {grains[i]['file']}, frames: {grains[i]['start_frame']}:{grains[i]['end_frame']}")
         grains[i]["grain"] = operations.adjust_level(grains[i]["grain"], DB)
         
     grain_audio = grain_assembler.merge(grains, num_channels, np.hanning)
@@ -118,66 +131,24 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
 
 
 if __name__ == "__main__":
-    LENGTH = 4096
-    SELECT = [
-        # not specifying frequency
-        """SELECT grains.* FROM grains
-        INNER JOIN tags ON grains.id = tags.grain_id
-        WHERE (grains.length = ?) AND (grains.spectral_flatness BETWEEN ? AND ?) AND (grains.spectral_roll_off_75 BETWEEN ? AND ?) 
-            AND (grains.energy > ?) AND (grains.frequency IS NULL) AND (tags.tag = ?)
-        GROUP BY grains.id;""",
+    GRAIN_LENGTH = 4096
 
-        # specifying frequency
-        """SELECT grains.* FROM grains
-        INNER JOIN tags ON grains.id = tags.grain_id
-        WHERE (grains.length = ?) AND (grains.spectral_flatness BETWEEN ? AND ?) AND (grains.spectral_roll_off_75 BETWEEN ? AND ?) 
-            AND (grains.energy > ?) AND (grains.frequency BETWEEN ? AND ?) AND (tags.tag = ?)
-        GROUP BY grains.id;""",
-    ]
-
-    PARAMS = [
-        (0, (LENGTH, 0.4, 1.0, 200.0, 400.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.3, 0.6, 250.0, 450.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.3, 0.6, 300.0, 500.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.2, 0.5, 350.0, 550.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.2, 0.3, 400.0, 600.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.1, 0.3, 450.0, 650.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.1, 0.2, 500.0, 700.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.0, 0.2, 550.0, 750.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.0, 0.2, 600.0, 750.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.1, 0.3, 650.0, 800.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.1, 0.3, 700.0, 850.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.2, 0.4, 650.0, 800.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.2, 0.4, 600.0, 750.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.0, 0.2, 550.0, 700.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.0, 0.2, 500.0, 650.0, 0.05, 'animal')),
-        (0, (LENGTH, 0.0, 0.2, 500.0, 600.0, 0.05, 'animal')),
-    ]
-
-    print("Retrieving grains...")
     # Retrieve grain metadata and grains
+    print("Retrieving grains...")
     db, cursor = grain_sql.connect_to_db(DB)
-    grain_entry_categories = []
-    for i, param in enumerate(PARAMS):
-        cursor.execute(SELECT[param[0]], param[1])
-        records = cursor.fetchall()
-        if len(records) == 0:
-            raise Exception(f"No grains found for index {i}.")
-        entry_category = []
-        for record in records:
-            entry_category.append({grain_sql.FIELDS[i]: record[i] for i in range(len(record))})
-        grain_entry_categories.append(entry_category)
-
+    grain_entry_categories = query.query1(GRAIN_LENGTH, cursor)
     db.close()
-    start = datetime.now()
-    print("Rendering...")
 
     # Generate candidate audio
-    NUM_AUDIO_CANDIDATES = 5
+    start = datetime.now()
+    print("Rendering...")
+    NUM_AUDIO_CANDIDATES = 1
     NUM_CHANNELS = 2
     NUM_UNIQUE_GRAINS = 10
-    # render(grain_entry_categories, NUM_UNIQUE_GRAINS, 200, -LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, "out_1.wav")
-    processes = [mp.Process(target=render, args=(grain_entry_categories, NUM_UNIQUE_GRAINS, 200, -LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, f"out_{i+1}.wav")) for i in range(NUM_AUDIO_CANDIDATES)]
+    if NUM_AUDIO_CANDIDATES > 1:
+        processes = [mp.Process(target=render, args=(grain_entry_categories, NUM_UNIQUE_GRAINS, 150, -GRAIN_LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, f"out_{i+1}.wav")) for i in range(NUM_AUDIO_CANDIDATES)]
+    else:
+        render(grain_entry_categories, NUM_UNIQUE_GRAINS, 200, -GRAIN_LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, "out_1.wav")    
     for p in processes:
         p.start()
     for p in processes:
