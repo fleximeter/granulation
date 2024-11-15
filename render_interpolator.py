@@ -122,6 +122,8 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
     grain_audio = operations.fade_in(grain_audio, "hanning", 22050)
     grain_audio = operations.fade_out(grain_audio, "hanning", 22050)
     grain_audio = operations.adjust_level(grain_audio, -12)
+    # add silence at the end
+    grain_audio = np.hstack((grain_audio, np.zeros((num_channels, 44100 * 2))))
 
     # Write the audio
     audio = audiofile.AudioFile(sample_rate=44100, bits_per_sample=24, num_channels=num_channels)
@@ -133,12 +135,12 @@ def render(grain_entry_categories, num_unique_grains_per_section, num_repetition
 
 
 if __name__ == "__main__":
-    GRAIN_LENGTH = 4096
+    GRAIN_LENGTH = 8192
 
     # Retrieve grain metadata and grains
     print("Retrieving grains...")
     db, cursor = grain_sql.connect_to_db(DB)
-    grain_entry_categories = query.query2(GRAIN_LENGTH, cursor)
+    grain_entry_categories = query.query4(GRAIN_LENGTH, cursor)
     db.close()
 
     # Generate candidate audio
@@ -146,10 +148,10 @@ if __name__ == "__main__":
     print("Rendering...")
     NUM_AUDIO_CANDIDATES = 5
     NUM_CHANNELS = 8
-    NUM_UNIQUE_GRAINS = 20
+    NUM_UNIQUE_GRAINS = 10
     if NUM_AUDIO_CANDIDATES > 1:
         processes = [mp.Process(target=render, args=(grain_entry_categories, NUM_UNIQUE_GRAINS, 
-                                                     [200, 50, 100, 150, 200, 150, 150, 100, 50, 200, 150, 150, 150, 100, 150, 100, 75, 40, 30, 20, 20, 20, 20, 20, 200], 
+                                                     [200, 100, 150, 200, 300, 150, 50, 100, 300, 300, 200, 100, 200, 80, 250, 300, 150, 300, 150, 100, 50, 40, 100, 20, 20, 20, 20, 20, 100, 200], 
                                                      -GRAIN_LENGTH + 75, NUM_CHANNELS, SOURCE_DIRS, OUT, f"out_{i+1}.wav")) for i in range(NUM_AUDIO_CANDIDATES)]
         for p in processes:
             p.start()
